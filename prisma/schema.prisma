@@ -32,16 +32,21 @@ model Wallet {
   holdBalance Float @default(0)
 
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model BankAccount {
-  id            Int    @id @default(autoincrement())
+  id            Int     @id @default(autoincrement())
   userId        Int
+  paymentMethod String?
   bankName      String
   accountName   String
   accountNumber String
 
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Transaction {
@@ -73,6 +78,7 @@ model Withdrawal {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([status])
 }
 
 model Deposit {
