@@ -5,29 +5,28 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const hashedPassword = await bcrypt.hash(
-      body.password,
-      10
-    );
+    const hashedPassword = await bcrypt.hash(body.password, 10);
 
     const user = await prisma.user.create({
       data: {
-        Username: body.Username,
+        username: body.username,
         email: body.email,
-        Password: hashedPassword,
-        PhoneNumber: body.PhoneNumber,
+        phone: body.phone,
+        password: hashedPassword,
 
         wallet: {
           create: {
             balance: 0,
+            holdBalance: 0,
           },
         },
 
         bankAccount: {
           create: {
-            PaymentMethod: body.PaymentMethod,
-            AccountName: body.AccountName,
-            AccountNumber: body.AccountNumber,
+            paymentMethod: body.paymentMethod,
+            bankName: body.bankName,
+            accountName: body.accountName,
+            accountNumber: body.accountNumber,
           },
         },
       },
@@ -37,12 +36,14 @@ export async function POST(req: Request) {
       success: true,
       user,
     });
-  } catch (error) {
-    console.log(error);
 
-    return Response.json({
-      success: false,
-      error: "Register failed",
-    });
+  } catch (err: any) {
+    return Response.json(
+      {
+        success: false,
+        message: err.message || "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
