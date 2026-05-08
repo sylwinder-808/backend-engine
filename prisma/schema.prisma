@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  email         String   @unique
+  phone         String
+  password      String
+  role          String   @default("player")
+  isBlocked     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  wallet       Wallet?
+  bankAccount  BankAccount[]
+  transactions Transaction[]
+  withdrawals  Withdrawal[]
+
+  deposits Deposit[] // 🔥 ADD INI
+}
+
+model Wallet {
+  id          Int   @id @default(autoincrement())
+  userId      Int   @unique
+  balance     Float @default(0)
+  holdBalance Float @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model BankAccount {
+  id            Int    @id @default(autoincrement())
+  userId        Int
+  bankName      String
+  accountName   String
+  accountNumber String
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  type          String
+  amount        Float
+  beforeBalance Float
+  afterBalance  Float
+  description   String
+  status        String   @default("success")
+  reference     String?  @unique
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Withdrawal {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  status    String   @default("pending") // pending, approved, rejected, paid
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Deposit {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  status    String   @default("pending") // pending, approved, rejected
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
