@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyAdmin } from "@/lib/admin";
-import { LedgerService } from "@/lib/services/ledger.service";
+import { LedgerService } from "@/lib/service/ledger.service";
 
 export async function POST(req: Request) {
   try {

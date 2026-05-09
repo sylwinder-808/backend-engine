@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { LedgerService } from "@/lib/services/ledger.service";
+import { LedgerService } from "@/lib/service/ledger.service";
 
 export async function POST(req: Request) {
   let body;
