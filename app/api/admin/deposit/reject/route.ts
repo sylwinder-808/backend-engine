@@ -33,13 +33,21 @@ export async function POST(req: Request) {
   }
 
   await prisma.$transaction(async (tx) => {
-    // 1. update status deposit
+    // 1. update deposit status
     await tx.deposit.update({
       where: { id: deposit.id },
       data: { status: "rejected" },
     });
 
-    // 2. transaction log (audit trail)
+    // 2. ambil wallet balance
+    const wallet = await tx.wallet.findUnique({
+      where: { userId: deposit.userId },
+    });
+
+    const beforeBalance = wallet?.balance ?? 0;
+    const afterBalance = beforeBalance;
+
+    // 3. transaction log (WAJIB lengkap schema Prisma)
     await tx.transaction.create({
       data: {
         userId: deposit.userId,
@@ -47,18 +55,21 @@ export async function POST(req: Request) {
         amount: deposit.amount,
         status: "failed",
         description: "Deposit rejected by admin",
+
+        beforeBalance,
+        afterBalance,
       },
     });
 
-    // 3. admin log (kalau kamu pakai AdminLogService bisa juga)
+    // 4. admin log (CAST JSON aman)
     await tx.adminLog.create({
       data: {
-        adminId: 1, // nanti ganti dari JWT admin
+        adminId: 1,
         action: "deposit_reject",
         targetId: deposit.id,
         meta: {
           amount: deposit.amount,
-        },
+        } as any, // 👈 FIX PRISMA JSON TYPE ISSUE
       },
     });
   });

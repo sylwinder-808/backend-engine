@@ -11,7 +11,10 @@ export const TransactionService = {
     description?: string;
   }) {
     return prisma.transaction.create({
-      data,
+      data: {
+        ...data,
+        description: data.description ?? "", // 👈 FIX WAJIB
+      },
     });
   },
 

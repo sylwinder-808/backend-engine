@@ -17,17 +17,24 @@ export const WithdrawService = {
         throw new Error("Invalid withdrawal");
       }
 
-      const beforeBalance = withdraw.user.wallet.balance;
+      // 2. SAFE NULL HANDLING (IMPORTANT)
+      const wallet = withdraw.user.wallet;
+      const beforeBalance = wallet?.balance ?? 0;
+
       const refundAmount = withdraw.amount;
       const afterBalance = beforeBalance + refundAmount;
 
-      // 2. update withdraw status
+      // 3. update withdraw status
       await tx.withdrawal.update({
         where: { id },
         data: { status: "rejected" },
       });
 
-      // 3. refund wallet
+      // 4. refund wallet (ensure wallet exists)
+      if (!wallet) {
+        throw new Error("Wallet not found for user");
+      }
+
       await tx.wallet.update({
         where: { userId: withdraw.userId },
         data: {
@@ -37,7 +44,7 @@ export const WithdrawService = {
         },
       });
 
-      // 4. transaction log
+      // 5. transaction log (PRISMA SAFE)
       await tx.transaction.create({
         data: {
           userId: withdraw.userId,
@@ -46,11 +53,11 @@ export const WithdrawService = {
           beforeBalance,
           afterBalance,
           status: "success",
-          description: reason || "Withdraw rejected and refunded",
+          description: reason ?? "Withdraw rejected and refunded",
         },
       });
 
-      // 5. admin log (audit trail)
+      // 6. admin log
       await tx.adminLog.create({
         data: {
           adminId,
@@ -58,8 +65,8 @@ export const WithdrawService = {
           targetId: withdraw.id,
           meta: {
             amount: refundAmount,
-            reason,
-          },
+            reason: reason ?? null,
+          } as any, // Prisma JSON safe fix
         },
       });
 
