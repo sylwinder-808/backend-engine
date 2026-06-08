@@ -5,24 +5,10 @@ export async function GET(req: Request) {
   try {
     const payload = getUserFromRequest(req);
 
-    const deposits = await prisma.deposit.findMany({
+    const staffs = await prisma.user.findMany({
       where: {
         tenantId: payload.tenantId!,
-      },
-      include: {
-        user: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const withdrawals = await prisma.withdrawal.findMany({
-      where: {
-        tenantId: payload.tenantId!,
-      },
-      include: {
-        user: true,
+        role: "STAFF",
       },
       orderBy: {
         createdAt: "desc",
@@ -31,15 +17,14 @@ export async function GET(req: Request) {
 
     return Response.json({
       success: true,
-      deposits,
-      withdrawals,
+      staffs,
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get transactions failed",
+      error: "Failed",
     });
   }
 }

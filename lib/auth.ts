@@ -1,12 +1,17 @@
-import * as jwt from "jsonwebtoken";
+import { verifyToken } from "./jwt";
 
-export function verifyToken(token: string) {
-  try {
-    return jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    );
-  } catch (error) {
-    return null;
+export function getUserFromRequest(req: Request) {
+  const auth = req.headers.get("authorization");
+
+  if (!auth) {
+    throw new Error("Unauthorized");
   }
+
+  const token = auth.replace("Bearer ", "");
+
+  return verifyToken(token) as {
+    id: number;
+    role: string;
+    tenantId?: string | null;
+  };
 }

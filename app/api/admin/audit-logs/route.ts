@@ -5,41 +5,26 @@ export async function GET(req: Request) {
   try {
     const payload = getUserFromRequest(req);
 
-    const deposits = await prisma.deposit.findMany({
+    const logs = await prisma.auditLog.findMany({
       where: {
         tenantId: payload.tenantId!,
-      },
-      include: {
-        user: true,
       },
       orderBy: {
         createdAt: "desc",
       },
-    });
-
-    const withdrawals = await prisma.withdrawal.findMany({
-      where: {
-        tenantId: payload.tenantId!,
-      },
-      include: {
-        user: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      take: 100,
     });
 
     return Response.json({
       success: true,
-      deposits,
-      withdrawals,
+      logs,
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get transactions failed",
+      error: "Failed",
     });
   }
 }

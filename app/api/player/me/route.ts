@@ -5,40 +5,34 @@ export async function GET(req: Request) {
   try {
     const payload = getUserFromRequest(req);
 
-    if (
-      payload.role !== "CLIENT_ADMIN" &&
-      payload.role !== "STAFF"
-    ) {
-      return Response.json({
-        success: false,
-        error: "Forbidden",
-      });
-    }
-
-    const players = await prisma.user.findMany({
+    const player = await prisma.user.findUnique({
       where: {
-        tenantId: payload.tenantId!,
-        role: "PLAYER",
+        id: payload.id,
       },
       include: {
         wallet: true,
-      },
-      orderBy: {
-        createdAt: "desc",
+        bankAccount: true,
+        tenant: true,
       },
     });
 
+    if (!player) {
+      return Response.json({
+        success: false,
+        error: "Player not found",
+      });
+    }
+
     return Response.json({
       success: true,
-      total: players.length,
-      players,
+      player,
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get players failed",
+      error: "Failed",
     });
   }
 }

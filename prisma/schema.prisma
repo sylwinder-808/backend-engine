@@ -1,138 +1,260 @@
 generator client {
-  provider = "prisma-client-js"
+provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+provider = "postgresql"
+url      = env("DATABASE_URL")
+}
+
+enum Role {
+SUPER_ADMIN
+CLIENT_ADMIN
+STAFF
+PLAYER
+}
+
+enum DomainStatus {
+ACTIVE
+INACTIVE
+MAINTENANCE
+}
+
+enum TransactionStatus {
+PENDING
+APPROVED
+REJECTED
+CANCELLED
+}
+
+model Tenant {
+id        String   @id @default(cuid())
+name      String
+code      String   @unique
+status    String   @default("ACTIVE")
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+users         User[]
+domains       Domain[]
+deposits      Deposit[]
+withdrawals   Withdrawal[]
+transactions  Transaction[]
+siteSettings  SiteSetting[]
+auditLogs     AuditLog[]
+}
+
+model Domain {
+id        String       @id @default(cuid())
+tenantId  String
+host      String       @unique
+status    DomainStatus @default(ACTIVE)
+isPrimary Boolean      @default(false)
+createdAt DateTime     @default(now())
+updatedAt DateTime     @updatedAt
+
+tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+@@index([tenantId])
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  email     String   @unique
-  phone     String
-  password  String
-  role      String   @default("player")
-  isBlocked Boolean  @default(false)
-  createdAt DateTime @default(now())
+id           Int      @id @default(autoincrement())
 
-  wallet       Wallet?
-  bankAccount  BankAccount[]
-  transactions Transaction[]
-  withdrawals  Withdrawal[]
+tenantId     String?
+tenant       Tenant?  @relation(fields: [tenantId], references: [id])
 
-  deposits  Deposit[]
-  adminLogs AdminLog[]
-  ledgers       Ledger[]
+username     String
+email        String
+phone        String
+password     String
+
+role         Role     @default(PLAYER)
+
+isBlocked    Boolean  @default(false)
+createdAt    DateTime @default(now())
+
+adminLogs    AdminLog[]
+bankAccount  BankAccount[]
+deposits     Deposit[]
+ledgers      Ledger[]
+transactions Transaction[]
+wallet       Wallet?
+withdrawals  Withdrawal[]
+
+@@unique([tenantId, username])
+@@unique([tenantId, email])
+@@index([tenantId])
 }
 
 model Wallet {
-  id          Int   @id @default(autoincrement())
-  userId      Int   @unique
-  balance     Float @default(0)
-  holdBalance Float @default(0)
+id          Int   @id @default(autoincrement())
+userId      Int   @unique
 
-  user User @relation(fields: [userId], references: [id])
+balance     Float @default(0)
+holdBalance Float @default(0)
 
-  @@index([userId])
+user User @relation(fields: [userId], references: [id])
+
+@@index([userId])
 }
 
 model BankAccount {
-  id            Int     @id @default(autoincrement())
-  userId        Int
-  paymentMethod String?
-  bankName      String
-  accountName   String
-  accountNumber String @unique
+id            Int    @id @default(autoincrement())
+userId        Int
 
-  user User @relation(fields: [userId], references: [id])
+bankName      String
+accountName   String
+accountNumber String
+paymentMethod String?
 
-  @@index([userId])
-}
+user User @relation(fields: [userId], references: [id])
 
-model Transaction {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  type          String
-  amount        Float
-  beforeBalance Float
-  afterBalance  Float
-  description   String
-  status        String   @default("success")
-  reference     String?  @unique
-  createdAt     DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model Withdrawal {
-  id     Int   @id @default(autoincrement())
-  userId Int
-  amount Float
-
-  status String @default("pending")
-
-  beforeBalance Float
-  afterBalance  Float
-
-  bankName      String
-  accountName   String
-  accountNumber String
-
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([status])
+@@index([userId])
 }
 
 model Deposit {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  amount    Float
-  status    String   @default("pending") // pending, approved, rejected
-  createdAt DateTime @default(now())
+id        Int      @id @default(autoincrement())
 
-  user User @relation(fields: [userId], references: [id])
+tenantId  String?
+userId    Int
 
-  @@index([userId])
-  @@index([status])
+amount    Float
+status    TransactionStatus @default(PENDING)
+
+createdAt DateTime @default(now())
+
+tenant Tenant? @relation(fields: [tenantId], references: [id])
+user   User    @relation(fields: [userId], references: [id])
+
+@@index([tenantId])
+@@index([userId])
 }
 
-model AdminLog {
-  id        Int      @id @default(autoincrement())
-  adminId   Int
-  action    String
-  targetId  Int?
-  meta      Json?
-  createdAt DateTime @default(now())
+model Withdrawal {
+id            Int      @id @default(autoincrement())
 
-  admin User @relation(fields: [adminId], references: [id])
+tenantId      String?
+userId        Int
+
+amount        Float
+
+accountName   String
+accountNumber String
+bankName      String
+
+beforeBalance Float
+afterBalance  Float
+
+status        TransactionStatus @default(PENDING)
+
+createdAt     DateTime @default(now())
+
+tenant Tenant? @relation(fields: [tenantId], references: [id])
+user   User    @relation(fields: [userId], references: [id])
+
+@@index([tenantId])
+@@index([userId])
+}
+
+model Transaction {
+id            Int      @id @default(autoincrement())
+
+tenantId      String?
+userId        Int
+
+invoiceNo     String?  @unique
+
+type          String
+amount        Float
+
+beforeBalance Float
+afterBalance  Float
+
+description   String
+
+status        TransactionStatus @default(APPROVED)
+
+createdAt     DateTime @default(now())
+
+tenant Tenant? @relation(fields: [tenantId], references: [id])
+user   User    @relation(fields: [userId], references: [id])
+
+@@index([tenantId])
+@@index([userId])
 }
 
 model Ledger {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  type      String   // deposit, withdraw, inject, refund
-  amount    Float
-  direction String   // credit | debit
-  before    Float
-  after     Float
-  refId     Int?
-  createdAt DateTime @default(now())
+id        Int      @id @default(autoincrement())
 
-  user      User     @relation(fields: [userId], references: [id])
+userId    Int
+
+type      String
+amount    Float
+direction String
+
+before    Float
+after     Float
+
+refId     Int?
+
+createdAt DateTime @default(now())
+
+user User @relation(fields: [userId], references: [id])
+
+@@index([userId])
 }
 
-model WebSetting {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique
-  value     String
-  updatedAt DateTime @updatedAt
+model AdminLog {
+id        Int      @id @default(autoincrement())
+
+adminId   Int
+action    String
+
+targetId  Int?
+meta      Json?
+
+createdAt DateTime @default(now())
+
+admin User @relation(fields: [adminId], references: [id])
+}
+
+model AuditLog {
+id        String   @id @default(cuid())
+
+tenantId  String?
+actorId   Int?
+
+action    String
+entity    String
+entityId  String?
+
+metadata  Json?
+
+createdAt DateTime @default(now())
+
+tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+@@index([tenantId])
+@@index([actorId])
+}
+
+model SiteSetting {
+id        String   @id @default(cuid())
+
+tenantId  String
+
+siteName  String
+
+logoUrl   String?
+faviconUrl String?
+
+maintenanceMode Boolean @default(false)
+
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+tenant Tenant @relation(fields: [tenantId], references: [id])
+
+@@unique([tenantId])
 }

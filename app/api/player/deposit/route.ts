@@ -1,44 +1,38 @@
 import { prisma } from "@/lib/prisma";
 import { getUserFromRequest } from "@/lib/auth";
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
   try {
     const payload = getUserFromRequest(req);
 
-    if (
-      payload.role !== "CLIENT_ADMIN" &&
-      payload.role !== "STAFF"
-    ) {
+    if (payload.role !== "PLAYER") {
       return Response.json({
         success: false,
         error: "Forbidden",
       });
     }
 
-    const players = await prisma.user.findMany({
-      where: {
+    const body = await req.json();
+
+    const deposit = await prisma.deposit.create({
+      data: {
         tenantId: payload.tenantId!,
-        role: "PLAYER",
-      },
-      include: {
-        wallet: true,
-      },
-      orderBy: {
-        createdAt: "desc",
+        userId: payload.id,
+        amount: Number(body.amount),
+        status: "PENDING",
       },
     });
 
     return Response.json({
       success: true,
-      total: players.length,
-      players,
+      deposit,
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get players failed",
+      error: "Deposit failed",
     });
   }
 }

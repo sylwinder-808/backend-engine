@@ -17,29 +17,16 @@ export async function GET(req: Request) {
       },
     });
 
-    const withdrawals = await prisma.withdrawal.findMany({
-      where: {
-        tenantId: payload.tenantId!,
-      },
-      include: {
-        user: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
     return Response.json({
       success: true,
       deposits,
-      withdrawals,
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get transactions failed",
+      error: "Failed",
     });
   }
 }

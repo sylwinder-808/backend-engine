@@ -8,16 +8,6 @@ export async function GET(
   try {
     const payload = getUserFromRequest(req);
 
-    if (
-      payload.role !== "CLIENT_ADMIN" &&
-      payload.role !== "STAFF"
-    ) {
-      return Response.json({
-        success: false,
-        error: "Forbidden",
-      });
-    }
-
     const { id } = await params;
 
     const player = await prisma.user.findFirst({
@@ -28,25 +18,6 @@ export async function GET(
       },
       include: {
         wallet: true,
-        bankAccount: true,
-        deposits: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 10,
-        },
-        withdrawals: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 10,
-        },
-        transactions: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 20,
-        },
       },
     });
 
@@ -59,14 +30,15 @@ export async function GET(
 
     return Response.json({
       success: true,
-      player,
+      balance: player.wallet?.balance ?? 0,
+      holdBalance: player.wallet?.holdBalance ?? 0,
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get player failed",
+      error: "Get balance failed",
     });
   }
 }

@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getUserFromRequest } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
-export async function GET(
+export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -19,34 +20,13 @@ export async function GET(
     }
 
     const { id } = await params;
+    const body = await req.json();
 
     const player = await prisma.user.findFirst({
       where: {
         id: Number(id),
         tenantId: payload.tenantId!,
         role: "PLAYER",
-      },
-      include: {
-        wallet: true,
-        bankAccount: true,
-        deposits: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 10,
-        },
-        withdrawals: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 10,
-        },
-        transactions: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 20,
-        },
       },
     });
 
@@ -57,16 +37,30 @@ export async function GET(
       });
     }
 
+    const hashedPassword = await bcrypt.hash(
+      body.password,
+      10
+    );
+
+    await prisma.user.update({
+      where: {
+        id: player.id,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
     return Response.json({
       success: true,
-      player,
+      message: "Password updated",
     });
   } catch (error) {
     console.error(error);
 
     return Response.json({
       success: false,
-      error: "Get player failed",
+      error: "Change password failed",
     });
   }
 }
