@@ -1,4 +1,4 @@
-import { verifyToken } from "./auth";
+import { verifyToken } from "./jwt";
 
 export function verifyAdmin(req: Request) {
   const authHeader =

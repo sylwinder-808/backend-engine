@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 
 export const UserService = {
   async findById(id: number) {
@@ -11,7 +12,7 @@ export const UserService = {
     });
   },
 
-  async findAll(role?: "admin" | "player") {
+  async findAll(role?: Role) {
     return prisma.user.findMany({
       where: role ? { role } : undefined,
       include: {

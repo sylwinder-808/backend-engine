@@ -13,7 +13,7 @@ export const WithdrawService = {
         },
       });
 
-      if (!withdraw || withdraw.status !== "pending") {
+      if (!withdraw || withdraw.status !== "PENDING") {
         throw new Error("Invalid withdrawal");
       }
 
@@ -27,7 +27,7 @@ export const WithdrawService = {
       // 3. update withdraw status
       await tx.withdrawal.update({
         where: { id },
-        data: { status: "rejected" },
+        data: { status: "REJECTED" },
       });
 
       // 4. refund wallet (ensure wallet exists)
@@ -52,7 +52,7 @@ export const WithdrawService = {
           amount: refundAmount,
           beforeBalance,
           afterBalance,
-          status: "success",
+          status: "APPROVED",
           description: reason ?? "Withdraw rejected and refunded",
         },
       });

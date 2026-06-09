@@ -6,14 +6,14 @@ export const DepositService = {
       data: {
         userId,
         amount,
-        status: "pending",
+        status: "PENDING",
       },
     });
   },
 
   async findPending() {
     return prisma.deposit.findMany({
-      where: { status: "pending" },
+      where: { status: "PENDING" },
       include: { user: true },
       orderBy: { createdAt: "desc" },
     });
@@ -22,14 +22,14 @@ export const DepositService = {
   async approve(id: number) {
     return prisma.deposit.update({
       where: { id },
-      data: { status: "approved" },
+      data: { status: "APPROVED" },
     });
   },
 
   async reject(id: number) {
     return prisma.deposit.update({
       where: { id },
-      data: { status: "rejected" },
+      data: { status: "REJECTED" },
     });
   },
 };

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { TransactionStatus } from "@prisma/client";
 
 export const TransactionService = {
   async create(data: {
@@ -7,7 +8,7 @@ export const TransactionService = {
     amount: number;
     beforeBalance: number;
     afterBalance: number;
-    status: string;
+    status: TransactionStatus;
     description?: string;
   }) {
     return prisma.transaction.create({
