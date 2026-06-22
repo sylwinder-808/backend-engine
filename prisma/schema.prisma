@@ -42,6 +42,7 @@ withdrawals   Withdrawal[]
 transactions  Transaction[]
 siteSettings  SiteSetting[]
 auditLogs     AuditLog[]
+banners       Banner[]
 }
 
 model Domain {
@@ -257,4 +258,32 @@ updatedAt DateTime @updatedAt
 tenant Tenant @relation(fields: [tenantId], references: [id])
 
 @@unique([tenantId])
+}
+
+model Banner {
+  id          String   @id @default(cuid())
+
+  tenantId    String
+
+  title       String
+  subtitle    String?
+
+  placement   String
+
+  href        String?
+
+  imageUrl    String
+
+  sortOrder   Int      @default(0)
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([placement])
+  @@index([isActive])
 }

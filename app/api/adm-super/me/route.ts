@@ -12,19 +12,65 @@ export async function GET(req: Request) {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: {
-        id: payload.id,
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    const [
+      user,
+      totalTenants,
+      totalAdmins,
+      totalStaffs,
+      totalPlayers,
+      tenants,
+    ] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: payload.id,
+        },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+        },
+      }),
+
+      prisma.tenant.count(),
+
+      prisma.user.count({
+        where: {
+          role: "CLIENT_ADMIN",
+        },
+      }),
+
+      prisma.user.count({
+        where: {
+          role: "STAFF",
+        },
+      }),
+
+      prisma.user.count({
+        where: {
+          role: "PLAYER",
+        },
+      }),
+
+      prisma.tenant.findMany({
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          _count: {
+            select: {
+              users: {
+                where: {
+                  role: "PLAYER",
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
 
     if (!user) {
       return Response.json({
@@ -35,7 +81,24 @@ export async function GET(req: Request) {
 
     return Response.json({
       success: true,
+
       user,
+
+      stats: {
+        tenants: totalTenants,
+        admins: totalAdmins,
+        staffs: totalStaffs,
+        players: totalPlayers,
+      },
+
+      tenants: tenants.map((tenant) => ({
+        id: tenant.id,
+        name: tenant.name,
+        code: tenant.code,
+        status: tenant.status,
+        createdAt: tenant.createdAt,
+        players: tenant._count.users,
+      })),
     });
   } catch (error) {
     console.error(error);
