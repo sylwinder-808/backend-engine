@@ -14,11 +14,64 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
+    const amount = Number(body.amount);
+
+    if (!amount || amount <= 0) {
+      return Response.json({
+        success: false,
+        error: "Invalid amount",
+      });
+    }
+
+    if (!body.method) {
+      return Response.json({
+        success: false,
+        error: "Method required",
+      });
+    }
+
+    let targetBank = null;
+
+    if (body.targetBankId) {
+      targetBank = await prisma.paymentTarget.findFirst({
+        where: {
+          id: Number(body.targetBankId),
+          tenantId: payload.tenantId!,
+          isActive: true,
+        },
+      });
+
+      if (!targetBank) {
+        return Response.json({
+          success: false,
+          error: "Bank target not found",
+        });
+      }
+    }
+
     const deposit = await prisma.deposit.create({
       data: {
         tenantId: payload.tenantId!,
         userId: payload.id,
-        amount: Number(body.amount),
+
+        amount,
+
+        method: body.method,
+
+        originAccount:
+          body.originAccount ?? null,
+
+        targetBankId:
+          body.targetBankId
+            ? Number(body.targetBankId)
+            : null,
+
+        serialNumber:
+          body.serialNumber ?? null,
+
+        proofUrl:
+          body.proof ?? null,
+
         status: "PENDING",
       },
     });

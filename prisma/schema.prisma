@@ -35,14 +35,17 @@ status    String   @default("ACTIVE")
 createdAt DateTime @default(now())
 updatedAt DateTime @updatedAt
 
-users         User[]
-domains       Domain[]
-deposits      Deposit[]
-withdrawals   Withdrawal[]
-transactions  Transaction[]
-siteSettings  SiteSetting[]
-auditLogs     AuditLog[]
-banners       Banner[]
+users           User[]
+domains         Domain[]
+deposits        Deposit[]
+withdrawals     Withdrawal[]
+transactions    Transaction[]
+siteSettings    SiteSetting[]
+auditLogs       AuditLog[]
+banners         Banner[]
+paymentTargets  PaymentTarget[]
+contactSetting  ContactSetting?
+templateSetting TemplateSetting?
 }
 
 model Domain {
@@ -115,21 +118,31 @@ user User @relation(fields: [userId], references: [id])
 }
 
 model Deposit {
-id        Int      @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
 
-tenantId  String?
-userId    Int
+  tenantId  String?
+  userId    Int
 
-amount    Float
-status    TransactionStatus @default(PENDING)
+  amount    Float
 
-createdAt DateTime @default(now())
+  method        String?
+  originAccount String?
 
-tenant Tenant? @relation(fields: [tenantId], references: [id])
-user   User    @relation(fields: [userId], references: [id])
+  targetBankId  Int?
 
-@@index([tenantId])
-@@index([userId])
+  serialNumber  String?
+
+  proofUrl      String?
+
+  status    TransactionStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
 }
 
 model Withdrawal {
@@ -286,4 +299,56 @@ model Banner {
   @@index([tenantId])
   @@index([placement])
   @@index([isActive])
+}
+
+model PaymentTarget {
+  id            Int      @id @default(autoincrement())
+
+  tenantId      String
+
+  bankName      String
+  accountName   String
+  accountNumber String
+
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model ContactSetting {
+  id String @id @default(cuid())
+
+  tenantId String @unique
+
+  whatsapp   String?
+  telegram   String?
+  email      String?
+  livechatUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model TemplateSetting {
+  id String @id @default(cuid())
+
+  tenantId String @unique
+
+  primaryColor   String?
+  secondaryColor String?
+
+  loginBackground    String?
+  registerBackground String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 }
