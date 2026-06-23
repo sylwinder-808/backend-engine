@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const tenant = domain?.tenant;
 
   if (!tenant) {
-    return Response.json({ success: false, error: "Tenant not found" });
+    return Response.json({ success: false, error: "Invalid Credentials" });
   }
 
   // 3. cari user berdasarkan tenant + username

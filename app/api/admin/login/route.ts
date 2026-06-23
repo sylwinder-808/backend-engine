@@ -6,38 +6,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const host =
-      req.headers.get("x-forwarded-host") ||
-      req.headers.get("host");
-
-    if (!host) {
-      return Response.json({
-        success: false,
-        error: "Host not found",
-      });
-    }
-
-    const cleanHost = host.split(":")[0];
-
-    const domain = await prisma.domain.findUnique({
-      where: {
-        host: cleanHost,
-      },
-      include: {
-        tenant: true,
-      },
-    });
-
-    if (!domain) {
-      return Response.json({
-        success: false,
-        error: "Tenant domain not found",
-      });
-    }
-
     const user = await prisma.user.findFirst({
       where: {
-        tenantId: domain.tenantId,
         email: body.email,
       },
     });
