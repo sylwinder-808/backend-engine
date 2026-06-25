@@ -2,29 +2,49 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
-    const host =
+    const rawHost =
       req.headers.get("x-forwarded-host") ||
       req.headers.get("host");
 
-    if (!host) {
+    console.log("=================================");
+    console.log("RAW HOST:", rawHost);
+
+    if (!rawHost) {
       return Response.json({
         success: false,
         error: "Host not found",
       });
     }
 
-    const cleanHost = host.split(":")[0];
+    const cleanHost = rawHost
+      .replace(/^https?:\/\//, "")
+      .split(":")[0]
+      .trim()
+      .toLowerCase();
 
-    const domain = await prisma.domain.findUnique({
+    console.log("CLEAN HOST:", cleanHost);
+
+    const domain = await prisma.domain.findFirst({
       where: {
         host: cleanHost,
       },
     });
 
+    console.log("DOMAIN FOUND:", domain);
+
     if (!domain) {
+      const allDomains = await prisma.domain.findMany({
+        select: {
+          host: true,
+        },
+      });
+
+      console.log("AVAILABLE DOMAINS:", allDomains);
+
       return Response.json({
         success: false,
         error: "Tenant not found",
+        host: cleanHost,
       });
     }
 
@@ -56,28 +76,18 @@ export async function GET(req: Request) {
 
     return Response.json({
       success: true,
-
       site: {
-        siteName:
-          siteSetting?.siteName ?? "",
-
-        logoUrl:
-          siteSetting?.logoUrl ?? "",
-
-        faviconUrl:
-          siteSetting?.faviconUrl ?? "",
-
+        siteName: siteSetting?.siteName ?? "",
+        logoUrl: siteSetting?.logoUrl ?? "",
+        faviconUrl: siteSetting?.faviconUrl ?? "",
         maintenanceMode:
-          siteSetting?.maintenanceMode ??
-          false,
-
+          siteSetting?.maintenanceMode ?? false,
         contact: contactSetting,
-
         template: templateSetting,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("PUBLIC SITE ERROR:", error);
 
     return Response.json({
       success: false,
