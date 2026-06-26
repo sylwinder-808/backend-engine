@@ -17,6 +17,15 @@ export async function GET(req: Request) {
       },
     });
 
+    const adjustments = await prisma.transaction.findMany({
+      where: {
+        tenantId: payload.tenantId!,
+      },
+      include: {
+        user: true,
+     },
+   });
+
     const withdrawals = await prisma.withdrawal.findMany({
       where: {
         tenantId: payload.tenantId!,
@@ -32,6 +41,7 @@ export async function GET(req: Request) {
     return Response.json({
       success: true,
       deposits,
+      adjustments,
       withdrawals,
     });
   } catch (error) {

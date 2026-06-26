@@ -39,10 +39,18 @@ export async function POST(req: Request) {
       data: {
         tenantId: payload.tenantId!,
 
+        type: body.type,
+        code: body.code,
+
         bankName: body.bankName,
         accountName: body.accountName,
         accountNumber: body.accountNumber,
 
+        adminFee: Number(body.adminFee ?? 0),
+
+        logoUrl: body.logoUrl,
+        qrImage: body.qrImage,
+        
         isActive: body.isActive ?? true,
       },
     });

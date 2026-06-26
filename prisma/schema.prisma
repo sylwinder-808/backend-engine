@@ -302,20 +302,28 @@ model Banner {
 }
 
 model PaymentTarget {
-  id            Int      @id @default(autoincrement())
+  id        String   @id @default(cuid())
 
-  tenantId      String
+  tenantId  String
 
-  bankName      String
-  accountName   String
+  type       String
+  code       String
+
+  bankName   String
+  accountName String
   accountNumber String
 
-  isActive      Boolean  @default(true)
+  adminFee   Float @default(0)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  qrImage    String?
+  logoUrl    String?
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  isActive   Boolean @default(true)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
 }
