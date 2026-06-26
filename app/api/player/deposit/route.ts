@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     if (body.targetBankId) {
       targetBank = await prisma.paymentTarget.findFirst({
         where: {
-          id: Number(body.targetBankId),
+          id: String(body.targetBankId),
           tenantId: payload.tenantId!,
           isActive: true,
         },
