@@ -22,7 +22,16 @@ export async function GET(req: Request) {
       },
       include: {
         wallet: true,
+
+        bankAccount: {
+      take: 1,
+      select: {
+        bankName: true,
+        accountName: true,
+        accountNumber: true,
       },
+    },
+  },
       orderBy: {
         createdAt: "desc",
       },
