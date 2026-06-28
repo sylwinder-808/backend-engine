@@ -285,7 +285,7 @@ model Banner {
 
   href        String?
 
-  imageUrl    String
+  imageUrl    String?
 
   sortOrder   Int      @default(0)
 
