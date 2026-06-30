@@ -46,6 +46,7 @@ banners         Banner[]
 paymentTargets  PaymentTarget[]
 contactSetting  ContactSetting?
 templateSetting TemplateSetting?
+seoSetting      SeoSetting?
 }
 
 model Domain {
@@ -359,4 +360,32 @@ model TemplateSetting {
   updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model SeoSetting {
+  id String @id @default(cuid())
+
+  tenantId String @unique
+
+  metaTitle String?
+  metaDescription String?
+  metaKeywords String?
+
+  ogTitle String?
+  ogDescription String?
+  ogImage String?
+
+  twitterTitle String?
+  twitterDescription String?
+  twitterImage String?
+
+  canonicalUrl String?
+
+  robotsIndex Boolean @default(true)
+  robotsFollow Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

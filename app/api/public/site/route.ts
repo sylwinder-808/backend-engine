@@ -13,123 +13,283 @@ function removePort(host: string) {
   return host.split(":")[0];
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Unknown error";
+}
+
+async function resolveTenant(req: Request) {
+  const rawHost =
+    req.headers.get("x-tenant-host") ||
+    req.headers.get("x-public-domain") ||
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host");
+
+  if (!rawHost) {
+    return {
+      success: false as const,
+      error: "Host not found",
+      cleanHost: null,
+      hostWithoutPort: null,
+      domain: null,
+    };
+  }
+
+  const cleanHost = normalizeHost(rawHost);
+  const hostWithoutPort = removePort(cleanHost);
+
+  const domain = await prisma.domain.findFirst({
+    where: {
+      status: "ACTIVE",
+      OR: [{ host: cleanHost }, { host: hostWithoutPort }],
+    },
+    include: {
+      tenant: true,
+    },
+  });
+
+  if (!domain || !domain.tenant) {
+    return {
+      success: false as const,
+      error: "Tenant not found",
+      cleanHost,
+      hostWithoutPort,
+      domain: null,
+    };
+  }
+
+  if (domain.tenant.status !== "ACTIVE") {
+    return {
+      success: false as const,
+      error: "Tenant inactive",
+      cleanHost,
+      hostWithoutPort,
+      domain,
+    };
+  }
+
+  return {
+    success: true as const,
+    error: null,
+    cleanHost,
+    hostWithoutPort,
+    domain,
+  };
+}
+
+/**
+ * SEO builder (pakai SeoSetting)
+ */
+function buildSeo({
+  seoSetting,
+  siteName,
+  logoUrl,
+  canonicalUrl,
+}: {
+  seoSetting: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    metaKeywords?: string | null;
+
+    ogTitle?: string | null;
+    ogDescription?: string | null;
+    ogImage?: string | null;
+
+    twitterTitle?: string | null;
+    twitterDescription?: string | null;
+    twitterImage?: string | null;
+
+    canonicalUrl?: string | null;
+    robotsIndex?: boolean | null;
+    robotsFollow?: boolean | null;
+  } | null;
+
+  siteName: string;
+  logoUrl: string | null;
+  canonicalUrl: string | null;
+}) {
+  const metaTitle = seoSetting?.metaTitle || siteName;
+
+  const metaDescription =
+    seoSetting?.metaDescription || `${siteName} - Website`;
+
+  const ogTitle = seoSetting?.ogTitle || metaTitle;
+  const ogDescription = seoSetting?.ogDescription || metaDescription;
+  const ogImage = seoSetting?.ogImage || logoUrl;
+
+  const twitterTitle = seoSetting?.twitterTitle || ogTitle;
+  const twitterDescription = seoSetting?.twitterDescription || ogDescription;
+  const twitterImage = seoSetting?.twitterImage || ogImage;
+
+  return {
+    metaTitle,
+    metaDescription,
+    metaKeywords: seoSetting?.metaKeywords || null,
+
+    ogTitle,
+    ogDescription,
+    ogImage,
+
+    twitterTitle,
+    twitterDescription,
+    twitterImage,
+
+    canonicalUrl: seoSetting?.canonicalUrl || canonicalUrl,
+
+    robotsIndex: seoSetting?.robotsIndex ?? true,
+    robotsFollow: seoSetting?.robotsFollow ?? true,
+  };
+}
+
 export async function GET(req: Request) {
   try {
-    const rawHost =
-      req.headers.get("x-tenant-host") ||
-      req.headers.get("x-forwarded-host") ||
-      req.headers.get("host");
+    const resolved = await resolveTenant(req);
 
-    console.log("=================================");
-    console.log("X-TENANT-HOST:", req.headers.get("x-tenant-host"));
-    console.log("X-FORWARDED-HOST:", req.headers.get("x-forwarded-host"));
-    console.log("HOST:", req.headers.get("host"));
-    console.log("RAW HOST:", rawHost);
-
-    if (!rawHost) {
-      return Response.json({
-        success: false,
-        error: "Host not found",
-      });
-    }
-
-    const cleanHost = normalizeHost(rawHost);
-    const hostWithoutPort = removePort(cleanHost);
-
-    console.log("CLEAN HOST:", cleanHost);
-    console.log("HOST WITHOUT PORT:", hostWithoutPort);
-
-    const domain = await prisma.domain.findFirst({
-      where: {
-        OR: [
-          {
-            host: cleanHost,
-          },
-          {
-            host: hostWithoutPort,
-          },
-        ],
-        status: "ACTIVE",
-      },
-      include: {
-        tenant: true,
-      },
-    });
-
-    console.log("DOMAIN FOUND:", domain);
-
-    if (!domain || !domain.tenant) {
-      const allDomains = await prisma.domain.findMany({
-        select: {
-          host: true,
-          status: true,
-          tenantId: true,
+    if (!resolved.success || !resolved.domain || !resolved.domain.tenant) {
+      return Response.json(
+        {
+          success: false,
+          error: resolved.error,
+          message:
+            resolved.error === "Tenant inactive"
+              ? "Website sedang tidak aktif."
+              : "Public site tidak ditemukan.",
+          host: resolved.cleanHost,
+          hostWithoutPort: resolved.hostWithoutPort,
         },
-      });
-
-      console.log("AVAILABLE DOMAINS:", allDomains);
-
-      return Response.json({
-        success: false,
-        error: "Tenant not found",
-        host: cleanHost,
-        hostWithoutPort,
-      });
+        {
+          status: resolved.error === "Tenant inactive" ? 403 : 404,
+        }
+      );
     }
 
-    if (domain.tenant.status !== "ACTIVE") {
-      return Response.json({
-        success: false,
-        error: "Tenant inactive",
-        host: cleanHost,
-      });
-    }
+    const tenantId = resolved.domain.tenantId;
+    const tenant = resolved.domain.tenant;
+    const domain = resolved.domain;
 
-    const tenantId = domain.tenantId;
-
-    const [siteSetting, contactSetting, templateSetting] = await Promise.all([
+    const [
+      siteSetting,
+      seoSetting,
+      contactSetting,
+      templateSetting,
+      banners,
+    ] = await Promise.all([
       prisma.siteSetting.findUnique({
-        where: {
-          tenantId,
-        },
+        where: { tenantId },
+      }),
+
+      prisma.seoSetting.findUnique({
+        where: { tenantId },
       }),
 
       prisma.contactSetting.findUnique({
-        where: {
-          tenantId,
-        },
+        where: { tenantId },
       }),
 
       prisma.templateSetting.findUnique({
+        where: { tenantId },
+      }),
+
+      prisma.banner.findMany({
         where: {
           tenantId,
+          isActive: true,
         },
+        orderBy: [
+          { placement: "asc" },
+          { sortOrder: "asc" },
+          { createdAt: "desc" },
+        ],
       }),
     ]);
 
+    const siteName = siteSetting?.siteName || tenant.name || "NAMA";
+    const logoUrl = siteSetting?.logoUrl || null;
+    const faviconUrl = siteSetting?.faviconUrl || logoUrl;
+
+    const canonicalUrl = domain.host
+      ? `https://${domain.host}`
+      : null;
+
+    const seo = buildSeo({
+      seoSetting,
+      siteName,
+      logoUrl,
+      canonicalUrl,
+    });
+
+    const contact = {
+      whatsapp: contactSetting?.whatsapp ?? null,
+      telegram: contactSetting?.telegram ?? null,
+      email: contactSetting?.email ?? null,
+      livechatUrl: contactSetting?.livechatUrl ?? null,
+
+      whatsappUrl: contactSetting?.whatsapp ?? null,
+      telegramUrl: contactSetting?.telegram ?? null,
+      liveChatUrl: contactSetting?.livechatUrl ?? null,
+    };
+
+    const template = templateSetting ? { ...templateSetting } : null;
+
+    const setting = {
+      siteName,
+      logoUrl,
+      faviconUrl,
+
+      maintenanceMode: siteSetting?.maintenanceMode ?? false,
+
+      ...contact,
+      contact,
+      template,
+      seo,
+
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        code: tenant.code,
+        status: tenant.status,
+      },
+
+      domain: {
+        id: domain.id,
+        host: domain.host,
+        status: domain.status,
+        isPrimary: domain.isPrimary,
+      },
+    };
+
     return Response.json({
       success: true,
+      setting,
+      banners,
+
+      // backward compatibility
       site: {
         tenant: {
-          id: domain.tenant.id,
-          name: domain.tenant.name,
-          code: domain.tenant.code,
-          status: domain.tenant.status,
+          id: tenant.id,
+          name: tenant.name,
+          code: tenant.code,
+          status: tenant.status,
         },
-        siteName: siteSetting?.siteName || domain.tenant.name || "",
-        logoUrl: siteSetting?.logoUrl ?? "",
-        faviconUrl: siteSetting?.faviconUrl ?? "",
+        siteName,
+        logoUrl,
+        faviconUrl,
         maintenanceMode: siteSetting?.maintenanceMode ?? false,
         contact: contactSetting,
         template: templateSetting,
+        seo,
       },
     });
   } catch (error) {
-    console.error("PUBLIC SITE ERROR:", error);
+    console.error("PUBLIC_SITE_ERROR:", error);
 
-    return Response.json({
-      success: false,
-      error: "Failed",
-    });
+    return Response.json(
+      {
+        success: false,
+        error: getErrorMessage(error),
+        message: "Public site tidak dapat dihubungi.",
+      },
+      { status: 500 }
+    );
   }
 }
