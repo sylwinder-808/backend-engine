@@ -1,80 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { getUserFromRequest } from "@/lib/auth";
-
-function cleanOptional(value: unknown) {
-  if (typeof value !== "string") return null;
-
-  const trimmed = value.trim();
-
-  return trimmed ? trimmed : null;
-}
+import cloudinary from "@/lib/cloudinary";
+import streamifier from "streamifier";
 
 function cleanString(value: unknown) {
   if (typeof value !== "string") return "";
-
   return value.trim();
 }
 
 function toBoolean(value: unknown, fallback = true) {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") return value === "true";
-
   return fallback;
 }
 
 function toNumber(value: unknown) {
   const numberValue = Number(value || 0);
-
   return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-
-  return "Unknown error";
-}
-
-export async function GET(req: Request) {
-  try {
-    const payload = getUserFromRequest(req);
-
-    if (!payload?.tenantId) {
-      return Response.json({
-        success: false,
-        error: "Unauthorized",
-      });
-    }
-
-    const banners = await prisma.banner.findMany({
-      where: {
-        tenantId: payload.tenantId,
-      },
-      orderBy: [
-        {
-          placement: "asc",
-        },
-        {
-          sortOrder: "asc",
-        },
-        {
-          createdAt: "desc",
-        },
-      ],
-    });
-
-    return Response.json({
-      success: true,
-      banners,
-      data: banners,
-    });
-  } catch (error) {
-    console.error("GET_ADMIN_BANNERS_ERROR:", error);
-
-    return Response.json({
-      success: false,
-      error: getErrorMessage(error),
-    });
-  }
 }
 
 export async function POST(req: Request) {
@@ -82,21 +24,40 @@ export async function POST(req: Request) {
     const payload = getUserFromRequest(req);
 
     if (!payload?.tenantId) {
-      return Response.json({
-        success: false,
-        error: "Unauthorized",
-      });
+      return Response.json({ success: false, error: "Unauthorized" });
     }
 
-    const body = await req.json();
+    const formData = await req.formData();
 
-    const title = cleanString(body.title);
-    const subtitle = cleanOptional(body.subtitle);
-    const imageUrl = cleanOptional(body.imageUrl);
-    const href = cleanOptional(body.href);
-    const placement = cleanString(body.placement) || "HOME";
-    const isActive = toBoolean(body.isActive, true);
-    const sortOrder = toNumber(body.sortOrder);
+    const title = cleanString(formData.get("title"));
+    const subtitle = formData.get("subtitle") as string | null;
+    const href = formData.get("href") as string | null;
+    const placement = cleanString(formData.get("placement")) || "HOME";
+    const isActive = toBoolean(formData.get("isActive"), true);
+    const sortOrder = toNumber(formData.get("sortOrder"));
+
+    const file = formData.get("image") as File | null;
+
+    let imageUrl: string | null = null;
+
+    // 🔥 UPLOAD KE CLOUDINARY
+    if (file) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      const result: any = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "banners" },
+          (err, result) => {
+            if (result) resolve(result);
+            else reject(err);
+          }
+        );
+
+        streamifier.createReadStream(buffer).pipe(stream);
+      });
+
+      imageUrl = result.secure_url;
+    }
 
     if (!title) {
       return Response.json({
@@ -110,7 +71,7 @@ export async function POST(req: Request) {
         tenantId: payload.tenantId,
         title,
         subtitle,
-        imageUrl,
+        imageUrl: imageUrl ?? "",
         href,
         placement,
         isActive,
@@ -121,14 +82,13 @@ export async function POST(req: Request) {
     return Response.json({
       success: true,
       banner,
-      data: banner,
     });
   } catch (error) {
     console.error("CREATE_ADMIN_BANNER_ERROR:", error);
 
     return Response.json({
       success: false,
-      error: getErrorMessage(error),
+      error: "Create banner failed",
     });
   }
 }
