@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
     const formData = await req.formData();
 
     const siteName = formData.get("siteName") as string;
-    const file = formData.get("logo") as File | null;
+    const file = formData.get("logoFile") as File | null;
 
     let logoUrl: string | null = null;
 
