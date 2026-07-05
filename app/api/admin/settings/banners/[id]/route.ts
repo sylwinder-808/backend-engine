@@ -93,3 +93,47 @@ export async function PATCH(
     });
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const payload = getUserFromRequest(req);
+    const { id } = await params;
+
+    if (!payload?.tenantId) {
+      return Response.json({ success: false, error: "Unauthorized" });
+    }
+
+    const existing = await prisma.banner.findFirst({
+      where: {
+        id,
+        tenantId: payload.tenantId,
+      },
+    });
+
+    if (!existing) {
+      return Response.json({
+        success: false,
+        error: "Banner not found",
+      }, { status: 404 });
+    }
+
+    await prisma.banner.delete({
+      where: { id },
+    });
+
+    return Response.json({
+      success: true,
+      message: "Banner deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("DELETE_ADMIN_BANNER_ERROR:", error);
+
+    return Response.json({
+      success: false,
+      error: error.message || "Delete failed",
+    });
+  }
+}
