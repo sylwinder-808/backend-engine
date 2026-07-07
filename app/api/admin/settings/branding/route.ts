@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromCookie } from "@/lib/auth/request-user";
 import cloudinary from "@/lib/cloudinary";
 import streamifier from "streamifier";
 
 export async function PATCH(req: Request) {
   try {
-    const payload = getUserFromRequest(req);
+    const payload = getUserFromCookie(req);
 
     if (
       payload.role !== "CLIENT_ADMIN" &&
