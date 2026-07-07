@@ -1,28 +1,28 @@
 import { verifyToken } from "../jwt";
 
-export function getUserFromCookie(req: Request) {
-  const cookieHeader = req.headers.get("cookie");
+export function getUserFromRequest(req: Request) {
+  const authorization = req.headers.get("authorization");
 
-  console.log("REQUEST COOKIE HEADER:", cookieHeader);
+  console.log(
+    "AUTHORIZATION HEADER:",
+    authorization ? "ADA" : "TIDAK ADA"
+  );
 
-  if (!cookieHeader) {
+
+  if (!authorization) {
     throw new Error("Unauthorized");
   }
 
-  const token = cookieHeader
-    .split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith("admin_token="))
-    ?.split("=")[1];
 
-  console.log(
-    "TOKEN FOUND:",
-    token ? "YES" : "NO"
-  );
+  const token = authorization
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+
 
   if (!token) {
     throw new Error("Unauthorized");
   }
+
 
   return verifyToken(token) as {
     id: number;
