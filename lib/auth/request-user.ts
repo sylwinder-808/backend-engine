@@ -1,34 +1,32 @@
-import { cookies } from "next/headers";
 import { verifyToken } from "../jwt";
 
-export async function getUserFromCookie() {
-  const cookieStore = await cookies();
+export function getUserFromCookie(req: Request) {
+  const cookieHeader = req.headers.get("cookie");
 
-  const allCookies = cookieStore.getAll();
+  console.log("REQUEST COOKIE HEADER:", cookieHeader);
 
-  console.log("ALL COOKIES:", allCookies);
+  if (!cookieHeader) {
+    throw new Error("Unauthorized");
+  }
 
-  const token = cookieStore.get("admin_token")?.value;
+  const token = cookieHeader
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith("admin_token="))
+    ?.split("=")[1];
 
-  console.log("TOKEN FOUND:", token ? "YES" : "NO");
+  console.log(
+    "TOKEN FOUND:",
+    token ? "YES" : "NO"
+  );
 
   if (!token) {
     throw new Error("Unauthorized");
   }
 
-  try {
-    const user = verifyToken(token);
-
-    console.log("JWT VALID:", user);
-
-    return user as {
-      id: number;
-      role: string;
-      tenantId?: string | null;
-    };
-  } catch (error) {
-    console.log("JWT INVALID:", error);
-
-    throw new Error("Unauthorized");
-  }
+  return verifyToken(token) as {
+    id: number;
+    role: string;
+    tenantId?: string | null;
+  };
 }
