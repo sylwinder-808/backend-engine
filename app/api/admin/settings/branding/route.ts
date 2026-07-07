@@ -5,7 +5,7 @@ import streamifier from "streamifier";
 
 export async function PATCH(req: Request) {
   try {
-    const payload = getUserFromCookie(req);
+    const payload = await getUserFromCookie();
 
     if (
       payload.role !== "CLIENT_ADMIN" &&

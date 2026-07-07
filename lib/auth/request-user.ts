@@ -1,17 +1,10 @@
+import { cookies } from "next/headers";
 import { verifyToken } from "../jwt";
 
-export function getUserFromCookie(req: Request) {
-  const cookieHeader = req.headers.get("cookie");
+export async function getUserFromCookie() {
+  const cookieStore = await cookies();
 
-  if (!cookieHeader) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = cookieHeader
-    .split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith("admin_token="))
-    ?.replace("admin_token=", "");
+  const token = cookieStore.get("admin_token")?.value;
 
   if (!token) {
     throw new Error("Unauthorized");
