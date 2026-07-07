@@ -1,21 +1,13 @@
 import { verifyToken } from "./jwt";
 
 export function getUserFromRequest(req: Request) {
-  const cookieHeader = req.headers.get("cookie");
+  const auth = req.headers.get("authorization");
 
-  if (!cookieHeader) {
+  if (!auth) {
     throw new Error("Unauthorized");
   }
 
-  const token = cookieHeader
-    .split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith("admin_token="))
-    ?.split("=")[1];
-
-  if (!token) {
-    throw new Error("Unauthorized");
-  }
+  const token = auth.replace("Bearer ", "");
 
   return verifyToken(token) as {
     id: number;
